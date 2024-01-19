@@ -1,0 +1,20 @@
+---
+- name: Enable Remote Desktop on Windows
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Check if remote desktop value is set to 1
+      ansible.windows.win_shell: |
+        $rdpEnabled = Get-WmiObject -Query "Select * from Win32_TerminalServiceSetting" -Namespace "Root\CIMv2\TerminalServices" | Select-Object -ExpandProperty AllowTSConnections
+        Write-Output $rdpEnabled
+      register: rds_status
+
+    - name: Display RDP status
+      ansible.builtin.debug:
+        var: rds_status.stdout_lines[0]
+    - name: Enable RDP if status is 0
+      ansible.windows.win_shell: |
+       Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -value 0
+      when: rds_status.stdout_lines[0] == "0"
+
+   
