@@ -1,0 +1,16 @@
+---
+- name: Create a new Linux user
+  hosts: all
+  tasks:
+    - name: Check if the entered user name exists on the system
+      ansible.builtin.command:
+        "id {{ username }}"
+      register: check_username
+      ignore_errors: true
+    - name: Create the user if the user does not exits
+      ansible.builtin.user:
+        name: "{{ username }}"
+        password: "{{ username_password }}| password_hash('sha512') }}"
+        create_home: true
+        shell: /bin/bash
+      when: check_username.rc != 0
