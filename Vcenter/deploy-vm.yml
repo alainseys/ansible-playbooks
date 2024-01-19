@@ -1,0 +1,132 @@
+---
+- name: Enroll new vm
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Vmware Windows Deployment
+      community.vmware.vmware_guest:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: false
+        cluster: "{{ vcenter_vmcluster }}"
+        folder: "{{ vcenter_vm_folder }}"
+        datacenter: "{{ vcenter_datacenter }}"
+        datastore: "{{ vcenter_datastore }}"
+        name: "{{ vm_name }}"
+        state: powered-on
+        template: "{{ vm_template }}"
+        networks:
+          - name: "{{ vm_network }}"
+        wait_for_ip_address: true
+        annotation: "{{ vm_comment }}"
+        customization:
+          existing_vm: true
+        customization_spec: "{{ vcenter_customization_spec }}"
+        wait_for_customization: true
+      when: vm_template == "WIN2022-V2024"
+      delegate_to: localhost
+    - name: Vmware virtual machine creation from template
+      community.vmware.vmware_guest:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: false
+        cluster: "{{ vcenter_vmcluster }}"
+        folder: "{{ vcenter_vm_folder }}"
+        datacenter: "{{ vcenter_datacenter }}"
+        datastore: "{{ vcenter_datastore }}"
+        name: "{{ vm_name }}"
+        state: powered-on
+        template: "{{ vm_template }}"
+        networks:
+          - name: "{{ vm_network }}"
+        wait_for_ip_address: false
+        annotation: "{{ vm_comment }}"
+      register: template_name_result
+      delegate_to: localhost
+    - name: Shutdown vm
+      community.vmware.vmware_guest_powerstate:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: false
+        folder: "{{ vcenter_vm_folder }}"
+        name: "{{ vm_name }}"
+        state: powered-off
+      delegate_to: localhost
+    - name: Change the amount of RAM of "{{ vm_name }}"
+      community.vmware.vmware_guest:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: false
+        folder: "{{ vcenter_vm_folder }}"
+        name: "{{ vm_name }}"
+        hardware:
+          memory_mb: "{{ vm_memory }}"
+      register: change_mem_result
+      delegate_to: localhost
+    - name: Change the amount of CPU of "{{ vm_name }}"
+      community.vmware.vmware_guest:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: false
+        folder: "{{ vcenter_vm_folder }}"
+        name: "{{ vm_name }}"
+        hardware:
+          num_cpus: "{{ vm_cpu }}"
+          num_cpu_cores_per_socket: "1"
+      when: vm_cpu is defined and (vm_cpu | length > 0)
+      delegate_to: localhost
+
+      register: change_cpu_result
+    - name: Start the vm with name "{{ vm_name }}"
+      community.vmware.vmware_guest_powerstate:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: false
+        folder: "{{ vcenter_vm_folder }}"
+        name: "{{ vm_name }}"
+        state: powered-on
+      delegate_to: localhost
+    - name: Assign Tag for "Oracle8-template"
+      community.vmware.vmware_tag_manager:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        tag_names:
+          - vSphereReplication:Ansible
+          - VeeamBackup:Linux
+        object_name: "{{ vm_name }}"
+        object_type: VirtualMachine
+        state: add
+      when: vm_template == "Oracle8-template"
+      delegate_to: localhost
+    - name: Assign Tag for "Debian-Template"
+      community.vmware.vmware_tag_manager:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        tag_names:
+          - VeeamBackup:Linux
+          - vSphereReplication:Ansible
+        object_name: "{{ vm_name }}"
+        object_type: VirtualMachine
+        state: add
+      when: vm_template == "Debian-Template"
+      delegate_to: localhost
+    - name: Assign Tag for "WIN2022-V2024"
+      community.vmware.vmware_tag_manager:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        tag_names:
+          - vSphereReplication:Ansible
+        object_name: "{{ vm_name }}"
+        object_type: VirtualMachine
+        state: add
+      when: vm_template == "WIN2022-V2024"
+      delegate_to: localhost
